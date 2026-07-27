@@ -490,6 +490,35 @@
     .pro{padding:56px 26px}
     section{padding:84px 0}
   }
+
+/* ── formulaire "Devenir artisan" (inline, sans redirection) ── */
+.artisan-form{max-width:560px;margin:36px auto 0;text-align:left}
+.af-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.af-field{display:flex;flex-direction:column;gap:7px}
+.af-field label{font-size:.78rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
+.af-field input,.af-field select{
+  background:var(--glass);
+  border:1px solid var(--stroke);
+  border-radius:14px;
+  padding:12px 14px;
+  color:var(--text);
+  font-family:inherit;font-size:.92rem;
+  outline:none;
+  transition:border-color .2s, background .2s;
+}
+.af-field input::placeholder{color:#5C6068}
+.af-field input:focus,.af-field select:focus{border-color:var(--stroke-hot);background:var(--glass-strong)}
+.af-field select{appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A8F98' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:16px;padding-right:38px}
+.af-field select option{background:#0F1115;color:#fff}
+.af-submit{width:100%;margin-top:6px}
+.af-submit:disabled{opacity:.6;cursor:default;transform:none!important}
+.af-msg{min-height:20px;text-align:center;font-size:.86rem;margin-top:12px}
+.af-msg.ok{color:#4ADE80}
+.af-msg.err{color:#FF6B6B}
+@media (max-width:560px){.af-row{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -506,7 +535,7 @@
     <nav class="nav-links">
       <a href="#comment">Comment ça marche</a>
       <a href="#artisans">Artisans</a>
-      <a href="https://forms-ivory-one.vercel.app/" target="_blank" rel="noopener">Devenir artisan</a>
+      <a href="#artisans">Devenir artisan</a>
       <a href="#villes">Villes</a>
       <a href="#faq">FAQ</a>
     </nav>
@@ -728,7 +757,47 @@
           <p>Le radar Teknicien vous montre les demandes autour de vous dès qu'elles sont publiées.</p>
         </div>
       </div>
-      <a class="btn btn-primary" href="https://forms-ivory-one.vercel.app/" target="_blank" rel="noopener">Rejoindre comme artisan</a>
+      <form id="artisan-form" class="artisan-form" onsubmit="return submitArtisanForm(event)">
+        <div class="af-row">
+          <div class="af-field">
+            <label for="af-metier">Métier</label>
+            <select id="af-metier" required>
+              <option value="" disabled selected>Choisir un métier</option>
+              <option>Plombier</option>
+              <option>Électricien</option>
+              <option>Mécanicien Mobile</option>
+              <option>Électricien Auto</option>
+              <option>Climatisation / Frigoriste</option>
+              <option>Menuisier / Bois</option>
+              <option>Peintre Bâtiment</option>
+              <option>Jardinier / Paysagiste</option>
+              <option>Nettoyage</option>
+              <option>Informatique / Tech</option>
+              <option>Maquillage</option>
+              <option>Coiffure</option>
+              <option>Installation TV / Multimédia</option>
+              <option>Installation Électroménager</option>
+              <option>Autre</option>
+            </select>
+          </div>
+          <div class="af-field">
+            <label for="af-nom">Nom et prénom</label>
+            <input id="af-nom" type="text" placeholder="ex. Youssef Amrani" required>
+          </div>
+        </div>
+        <div class="af-row">
+          <div class="af-field">
+            <label for="af-tel">Téléphone</label>
+            <input id="af-tel" type="tel" placeholder="06 12 34 56 78" required>
+          </div>
+          <div class="af-field">
+            <label for="af-ville">Ville</label>
+            <input id="af-ville" type="text" placeholder="ex. Casablanca" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary af-submit" id="af-submit-btn">Envoyer ma candidature</button>
+        <p class="af-msg" id="af-msg"></p>
+      </form>
     </div>
   </div>
 </section>
@@ -809,7 +878,7 @@
       Teknicien
     </a>
     <div class="foot-links">
-      <a href="https://forms-ivory-one.vercel.app/" target="_blank" rel="noopener">Devenir artisan</a>
+      <a href="#artisans">Devenir artisan</a>
       <a href="#">Conditions</a>
       <a href="#">Confidentialité</a>
       <a href="#">Contact</a>
@@ -832,5 +901,54 @@
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 </script>
 
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+  // Formulaire "Devenir artisan" — écrit dans le schéma Supabase séparé "landing"
+  // (distinct des tables de l'app principale), table landing.artisan_leads
+  const LANDING_SUPABASE_URL = 'https://ilwkiofwpzhyhwbrbqbf.supabase.co';
+  const LANDING_SUPABASE_ANON_KEY = 'REPLACE_WITH_ANON_KEY'; // clé publique anon, PAS la service_role
+  let landingSb = null;
+  try {
+    if (window.supabase && LANDING_SUPABASE_ANON_KEY !== 'REPLACE_WITH_ANON_KEY') {
+      landingSb = window.supabase.createClient(LANDING_SUPABASE_URL, LANDING_SUPABASE_ANON_KEY, {
+        db: { schema: 'landing' }
+      });
+    }
+  } catch(e) { console.error('Supabase init error', e); }
+
+  async function submitArtisanForm(evt){
+    evt.preventDefault();
+    const btn = document.getElementById('af-submit-btn');
+    const msg = document.getElementById('af-msg');
+    const payload = {
+      metier: document.getElementById('af-metier').value,
+      nom: document.getElementById('af-nom').value.trim(),
+      telephone: document.getElementById('af-tel').value.trim(),
+      ville: document.getElementById('af-ville').value.trim()
+    };
+    if(!payload.metier || !payload.nom || !payload.telephone || !payload.ville){
+      msg.textContent = 'Merci de remplir tous les champs.';
+      msg.className = 'af-msg err';
+      return false;
+    }
+    btn.disabled = true; btn.textContent = 'Envoi…';
+    try {
+      if(!landingSb) throw new Error('not_configured');
+      const { error } = await landingSb.from('artisan_leads').insert([payload]);
+      if(error) throw error;
+      msg.textContent = 'Candidature envoyée ✓ On vous recontacte très vite.';
+      msg.className = 'af-msg ok';
+      document.getElementById('artisan-form').reset();
+    } catch(e){
+      console.error(e);
+      msg.textContent = "Une erreur est survenue. Réessayez, ou contactez-nous directement.";
+      msg.className = 'af-msg err';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Envoyer ma candidature';
+    }
+    return false;
+  }
+</script>
 </body>
 </html>
